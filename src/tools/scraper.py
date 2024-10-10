@@ -67,7 +67,7 @@ def scrape_yahoo_finance(quote, start_date, end_date):
     return data
 
 
-def save_to_sqlite(data, from_currency, to_currency, period,db):
+def save_to_sqlite(data, from_currency, to_currency, period,start_date, end_date, db):
     for row in data:
         HistoricalData.create(
             date=row['Date'],
@@ -79,6 +79,8 @@ def save_to_sqlite(data, from_currency, to_currency, period,db):
             volume=row['Volume'],
             from_currency=from_currency,
             to_currency=to_currency,
+            start_date=start_date,
+            end_date=end_date,
             period=period
         )
     db.commit()

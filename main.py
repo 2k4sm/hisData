@@ -77,8 +77,66 @@ def health_check():
         "status": "healthy",
         "time": datetime.now().strftime("%Y-%m-%d")
     }
+    
+@app.get("/api/scrape", include_in_schema=False)
+def trigger_scraping():
+    currency_pairs = [
+        ("GBPINR=X", ["1W", "1M", "3M", "6M", "1Y"]),
+        ("AEDINR=X", ["1W", "1M", "3M", "6M", "1Y"]),
+    ]
+    
+    updates = 0
+    for pair, periods in currency_pairs: 
+        from_currency = pair[:3]
+        to_currency = pair[3:6]
+        
+        for period in periods:
+            try:
+                end_date = datetime.today().strftime('%Y-%m-%d')
 
-@app.post("/api/forex-data")
+                if period == '1W':
+                    start_date = (datetime.today() - timedelta(weeks=1)).strftime('%Y-%m-%d')
+                elif period == '1M':
+                    start_date = (datetime.today() - timedelta(days=30)).strftime('%Y-%m-%d')
+                elif period == '3M':
+                    start_date = (datetime.today() - timedelta(days=90)).strftime('%Y-%m-%d')
+                elif period == '6M':
+                    start_date = (datetime.today() - timedelta(days=180)).strftime('%Y-%m-%d')
+                elif period == '1Y':
+                    start_date = (datetime.today() - timedelta(days=365)).strftime('%Y-%m-%d')
+
+                existing_data = HistoricalData.select().where(
+                    (HistoricalData.from_currency == from_currency) &
+                    (HistoricalData.to_currency == to_currency) &
+                    (HistoricalData.period == period) &
+                    (HistoricalData.start_date == start_date) &
+                    (HistoricalData.end_date == end_date)
+                )
+
+                if existing_data.exists():
+                    print(f"Data already exists for {pair} ({period}) between {start_date} and {end_date}. Skipping scraping.")
+                    continue
+
+                data = scrape_yahoo_finance(pair, start_date, end_date)
+                updates += len(data)
+
+                if data:
+                    save_to_sqlite(data, from_currency, to_currency, period, start_date, end_date, db)
+                    print("data saved to sqlite", pair, period)
+                else:
+                    print(f"No data scraped for {pair} ({period}).")
+                    
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to scrape data: {str(e)}")
+
+    return {
+        "status": "success",
+        "message": "Scraping completed successfully.",
+        "updates": updates
+    }
+
+
+@app.post("/api/forex")
 def get_forex_data(request: RequestDTO):
     end_date = datetime.today().strftime('%Y-%m-%d')
     
@@ -96,9 +154,11 @@ def get_forex_data(request: RequestDTO):
         raise HTTPException(status_code=400,detail="Invalid period. Supported values are '1W', '1M', '3M', '6M', and '1Y'.")
     
     existing_data = HistoricalData.select().where(
-        (HistoricalData.from_currency == request.from_currency) & 
-        (HistoricalData.to_currency == request.to_currency) & 
-        (HistoricalData.period == request.period)
+        (HistoricalData.from_currency == request.from_currency) &
+        (HistoricalData.to_currency == request.to_currency) &
+        (HistoricalData.period == request.period) &
+        (HistoricalData.start_date == start_date) &
+        (HistoricalData.end_date == end_date)
     )
 
     if existing_data.exists():
@@ -122,14 +182,18 @@ def get_forex_data(request: RequestDTO):
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Failed to retrieve data: {str(e)}")
         
+        try:
+            save_to_sqlite(scraped_data, request.from_currency, request.to_currency, request.period, start_date, end_date, db)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to save data: {str(e)}")
         
-        save_to_sqlite(scraped_data, request.from_currency, request.to_currency, request.period, db)
-
         data = []
         for row in HistoricalData.select().where(
             (HistoricalData.from_currency == request.from_currency) & 
             (HistoricalData.to_currency == request.to_currency) & 
-            (HistoricalData.period == request.period)
+            (HistoricalData.period == request.period) &
+            (HistoricalData.start_date == start_date) &
+            (HistoricalData.end_date == end_date)
         ):
             data.append({
                 "date": row.date,

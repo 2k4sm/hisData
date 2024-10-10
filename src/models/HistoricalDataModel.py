@@ -13,6 +13,8 @@ class HistoricalData(Model):
     volume = CharField()
     from_currency = CharField()
     to_currency = CharField()
+    start_date = CharField()
+    end_date = CharField()
     period = CharField()
 
     class Meta:
