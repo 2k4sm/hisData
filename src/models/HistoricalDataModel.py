@@ -1,6 +1,6 @@
 from peewee import *
 
-db = db = SqliteDatabase(':memory:')
+db = SqliteDatabase('historical_data.db')
 
 
 class HistoricalData(Model):
@@ -11,6 +11,9 @@ class HistoricalData(Model):
     close_price = CharField()
     adj_close = CharField()
     volume = CharField()
+    from_currency = CharField()
+    to_currency = CharField()
+    period = CharField()
 
     class Meta:
         database = db

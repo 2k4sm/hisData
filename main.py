@@ -8,6 +8,14 @@ from src.models.HistoricalDataModel import HistoricalData
 from src.models.HistoricalDataModel import db
 app = FastAPI()
 
+@app.on_event("startup")
+def startup():
+    db.connect()
+    db.create_tables([HistoricalData], safe=True)
+
+@app.on_event("shutdown")
+def shutdown():
+    db.close()
 
 @app.get("/")
 def health_check():
@@ -32,35 +40,51 @@ def get_forex_data(request: RequestDTO):
         start_date = (datetime.today() - timedelta(days=365)).strftime('%Y-%m-%d')
     else:
         return {"error": "Invalid period. Supported values are '1W', '1M', '3M', '6M', and '1Y'."}
+    
+    existing_data = HistoricalData.select().where(
+        (HistoricalData.from_currency == request.from_currency) & 
+        (HistoricalData.to_currency == request.to_currency) & 
+        (HistoricalData.period == request.period)
+    )
 
-    
-    quote = f"{request.from_currency}{request.to_currency}=X"
-    
-
-    scraped_data = scrape_yahoo_finance(quote, start_date, end_date)
-    
-    db.connect()
-    
-    save_to_sqlite(scraped_data,db=db)
-    
-    res = {}
-    data = []
-    for row in HistoricalData.select():
-        data.append({
-            "date": row.date,
-            "open_price": row.open_price,
-            "high_price": row.high_price,
-            "low_price": row.low_price,
-            "close_price": row.close_price,
-            "adj_close": row.adj_close,
-            "volume": row.volume
-        })
-    
-    res["to_currency"] = request.to_currency
-    res["from_currency"] = request.from_currency
-    res["period"] = request.period
-    res["data"] = data
+    if existing_data.exists():
+        print("Using existing data from SQLite.")
+        data = []
+        for row in existing_data:
+            data.append({
+                "date": row.date,
+                "open_price": row.open_price,
+                "high_price": row.high_price,
+                "low_price": row.low_price,
+                "close_price": row.close_price,
+                "adj_close": row.adj_close,
+                "volume": row.volume
+            })
+    else:
+        quote = f"{request.from_currency}{request.to_currency}=X"
         
-    db.close()
-    
-    return res
+        scraped_data = scrape_yahoo_finance(quote, start_date, end_date)
+        save_to_sqlite(scraped_data, request.from_currency, request.to_currency, request.period, db)
+
+        data = []
+        for row in HistoricalData.select().where(
+            (HistoricalData.from_currency == request.from_currency) & 
+            (HistoricalData.to_currency == request.to_currency) & 
+            (HistoricalData.period == request.period)
+        ):
+            data.append({
+                "date": row.date,
+                "open_price": row.open_price,
+                "high_price": row.high_price,
+                "low_price": row.low_price,
+                "close_price": row.close_price,
+                "adj_close": row.adj_close,
+                "volume": row.volume
+            })
+            
+    return {
+        "to_currency": request.to_currency,
+        "from_currency": request.from_currency,
+        "period": request.period,
+        "data": data
+    }

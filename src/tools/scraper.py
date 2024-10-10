@@ -8,6 +8,7 @@ from src.models.HistoricalDataModel import HistoricalData
 
 
 def scrape_yahoo_finance(quote, start_date, end_date):
+    print(f"Scraping Yahoo Finance for {quote} from {start_date} to {end_date}")
     
     def date_to_timestamp(date_str):
         dt = datetime.strptime(date_str, '%Y-%m-%d')
@@ -17,8 +18,6 @@ def scrape_yahoo_finance(quote, start_date, end_date):
     period2 = date_to_timestamp(end_date)
     
     url = f"https://finance.yahoo.com/quote/{quote}/history?period1={period1}&period2={period2}"
-    
-    print(f"URL: {url}")
     
     headers = [
         {
@@ -30,8 +29,6 @@ def scrape_yahoo_finance(quote, start_date, end_date):
     ]
     
     response = requests.get(url, headers=headers[random.randint(0, 1)])
-    
-    print("response", response)
     
     if response.status_code != 200:
         raise Exception(f"Failed to retrieve data: {response.status_code}")
@@ -69,9 +66,8 @@ def scrape_yahoo_finance(quote, start_date, end_date):
     
     return data
 
-def save_to_sqlite(data,db):
-    db.create_tables([HistoricalData])
-    
+
+def save_to_sqlite(data, from_currency, to_currency, period,db):
     for row in data:
         HistoricalData.create(
             date=row['Date'],
@@ -80,14 +76,13 @@ def save_to_sqlite(data,db):
             low_price=row['Low'],
             close_price=row['Close'],
             adj_close=row['Adj Close'],
-            volume=row['Volume']
+            volume=row['Volume'],
+            from_currency=from_currency,
+            to_currency=to_currency,
+            period=period
         )
-    
-    # for entry in HistoricalData.select():
-    #     print(entry.date, entry.open_price, entry.high_price, entry.low_price, entry.close_price, entry.adj_close, entry.volume)
-    
-    db.commit()    
-    
+    db.commit()
+
 # # for testing.
 # if __name__ == "__main__":
 #     quote = "EURUSD=X"
