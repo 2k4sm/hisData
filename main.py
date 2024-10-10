@@ -25,7 +25,7 @@ You can **retrieve historical forex data** for specified currency pairs.
 
 ### Request Forex Data
 
-- **POST** `/api/forex-data`
+- **POST** `/api/forex`
 
 ### Request Body
 

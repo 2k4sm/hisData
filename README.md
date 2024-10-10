@@ -1,14 +1,14 @@
 # hisData
 
-**Keep in mind that this service uses render for hosting and render shuts off the server every 15 mins if no activity is found. If the server is not responding give it around 2-5 mins to start**
-
----
-
 _**This FastAPI application periodically scrapes currency exchange rate data from Yahoo Finance for specific currency pairs and periods. The scraped data is stored in SQLite database and is scheduled to update regularly using CRON jobs on [https://cron-job.org/en/](https://cron-job.org/en/)**_
 
 ---
 
 _**The scrapped data can be retrieved from the database using the provided `/api/forex` endpoint if it does not exist in the database it will first fetch the data update it in the database and then provide the client with the data. and in the subsequent requests which corresponds to the same request it will return the stored data.**_
+
+---
+
+**Keep in mind that this service uses render for hosting and render shuts off the server every 15 mins if no activity is found. If the server is not responding give it around 2-5 mins to start**
 
 ## Local Setup Guide.
 
@@ -109,7 +109,7 @@ _Response Example:_
 
 _Curl Command:_
 
-```json
+```bash
 curl -X GET "https://hisdata.2k4sm.tech/api/scrape"
 ```
 
@@ -125,7 +125,7 @@ _Response Example:_
 
 _CRON Job Setup:_
 
-```json
+```bash
 */15 * * * * /usr/bin/curl -X GET "https://hisdata.2k4sm.tech/api/scrape"
 ```
 
