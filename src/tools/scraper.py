@@ -1,23 +1,10 @@
 import time
+import random
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 from peewee import *
-import random
-
-db = SqliteDatabase(':memory:')
-
-class HistoricalData(Model):
-    date = CharField()
-    open_price = CharField()
-    high_price = CharField()
-    low_price = CharField()
-    close_price = CharField()
-    adj_close = CharField()
-    volume = CharField()
-
-    class Meta:
-        database = db
+from src.models.HistoricalDataModel import HistoricalData
 
 
 def scrape_yahoo_finance(quote, start_date, end_date):
@@ -82,8 +69,7 @@ def scrape_yahoo_finance(quote, start_date, end_date):
     
     return data
 
-def save_to_sqlite(data):
-    db.connect()
+def save_to_sqlite(data,db):
     db.create_tables([HistoricalData])
     
     for row in data:
@@ -97,11 +83,11 @@ def save_to_sqlite(data):
             volume=row['Volume']
         )
     
-    for data in HistoricalData.select():
-        print(data.date, data.open_price, data.high_price, data.low_price, data.close_price, data.adj_close, data.volume)
+    # for entry in HistoricalData.select():
+    #     print(entry.date, entry.open_price, entry.high_price, entry.low_price, entry.close_price, entry.adj_close, entry.volume)
     
-    db.close()
-
+    db.commit()    
+    
 # # for testing.
 # if __name__ == "__main__":
 #     quote = "EURUSD=X"
