@@ -35,7 +35,7 @@ def scrape_yahoo_finance(quote, start_date, end_date):
     
     soup = BeautifulSoup(response.text, 'lxml')
     
-    table = soup.find('table', {'class': 'table yf-ewueuo noDl'})
+    table = soup.find('table', {'class': 'table yf-h2urb6 noDl'})
     if table is None:
         raise Exception("Failed to find historical data table after scraping Yahoo Finance provide correct to and from currency codes.")
     
